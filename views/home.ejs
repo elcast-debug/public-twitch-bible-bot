@@ -10,7 +10,7 @@
   <main class="container">
     <section class="hero card">
       <h1>Twitch Bible Bot</h1>
-      <p>Public Twitch bot for Bible verses. Streamers can connect their Twitch account, enable the bot for their channel, and choose a default translation.</p>
+      <p>Twitch bot for Bible verses. Streamers can connect their Twitch account, enable the bot for their channel, and choose a default translation.</p>
       <div class="actions">
         <% if (user) { %>
           <a class="button" href="/dashboard">Open dashboard</a>
@@ -19,7 +19,6 @@
         <% } %>
       </div>
     </section>
-
     <section class="grid">
       <article class="card">
         <h2>How it works</h2>
@@ -27,13 +26,18 @@
       </article>
       <article class="card">
         <h2>Translations</h2>
-        <p>The bot uses the HelloAO Free Use Bible API and supports friendly aliases like <code>KJV</code>, <code>WEB</code>, <code>GLV</code>, and <code>NET</code> mapped to HelloAO translation IDs.</p>
-      </article>
-      <article class="card">
-        <h2>Deploy</h2>
-        <p>Host on Railway, set Twitch app variables, and keep one central bot account online for all connected channels.</p>
+        <p>The bot supports friendly Bible translation aliases like<b> KJV, KJVA, ASV, ABT, AAB, BSB, BBE, DARBY, DRA, EMTV, JPS, LSV, LXX, F35, FBV, GLV, GNV, WEB, WEBC, WEBPB, WEBU, WMB, YLT, NET, OJB, T4T, ULB</b>, and more, all mapped to Bible translation IDs.</p>
       </article>
     </section>
+    
+    <section class="grid">
+      <article class="card">
+        <h2>Support me!</h2>
+        <p>Running these services can get expensive, and I’ve poured a lot of time, effort, and my own resources into building and keeping them going. Any support would truly mean a lot to me.</p>
+        <a href="https://www.paypal.com/donate/?hosted_button_id=JEEJTQ2G6BBUL" target="_blank"><img src="https://i.ibb.co/4ZqVqm3p/image.png" height="64"></a>
+      </article>
+    </section>
+    
   </main>
 </body>
 </html>

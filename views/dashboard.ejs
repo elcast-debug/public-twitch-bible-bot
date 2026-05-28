@@ -27,13 +27,28 @@
         </form>
       </article>
 
-      <article class="card">
-        <h2>Default translation</h2>
-        <form method="post" action="/dashboard/settings" class="stack">
-          <input name="preferred_translation" type="text" value="<%= channel.preferred_translation %>" placeholder="eng_kjv or WEB" />
-          <button class="button" type="submit">Save translation</button>
-        </form>
-      </article>
+      <%
+const translations = TRANSLATION_DISPLAY_LABELS;
+const currentTranslation = channel.preferred_translation || 'eng_kjv';
+%>
+
+<article class="card">
+  <h2>Default translation</h2>
+  <form method="post" action="/dashboard/settings" class="stack">
+    <label for="preferred_translation">Choose translation</label>
+    <select id="preferred_translation" name="preferred_translation">
+      <% Object.entries(translations).forEach(([translationId, label]) => { %>
+        <option
+          value="<%= translationId %>"
+          <%= currentTranslation === translationId || currentTranslation === label ? 'selected' : '' %>>
+          <%= label %> (<%= translationId %>)
+        </option>
+      <% }) %>
+    </select>
+
+    <button class="button" type="submit">Save translation</button>
+  </form>
+</article>
     </section>
 
     <section class="card">
