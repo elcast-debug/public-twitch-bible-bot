@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Twitch Bible Bot</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <section class="hero card">
+      <h1>Twitch Bible Bot</h1>
+      <p>Public Twitch bot for Bible verses. Streamers can connect their Twitch account, enable the bot for their channel, and choose a default translation.</p>
+      <div class="actions">
+        <% if (user) { %>
+          <a class="button" href="/dashboard">Open dashboard</a>
+        <% } else { %>
+          <a class="button" href="/auth/twitch">Connect with Twitch</a>
+        <% } %>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>How it works</h2>
+        <p>After a streamer connects with Twitch, the bot stores their channel and joins it automatically. Viewers can then type references like <code>John 3:16</code> or <code>Psalms 23:1 WEB</code>.</p>
+      </article>
+      <article class="card">
+        <h2>Translations</h2>
+        <p>The bot uses the HelloAO Free Use Bible API and supports friendly aliases like <code>KJV</code>, <code>WEB</code>, <code>GLV</code>, and <code>NET</code> mapped to HelloAO translation IDs.</p>
+      </article>
+      <article class="card">
+        <h2>Deploy</h2>
+        <p>Host on Railway, set Twitch app variables, and keep one central bot account online for all connected channels.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

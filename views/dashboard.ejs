@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - Twitch Bible Bot</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <section class="card header-row">
+      <div>
+        <h1>Welcome, <%= user.display_name %></h1>
+        <p>Your channel: <strong>#<%= channel.channel_login %></strong></p>
+      </div>
+      <form method="post" action="/logout">
+        <button class="button secondary" type="submit">Logout</button>
+      </form>
+    </section>
+
+    <section class="grid two">
+      <article class="card">
+        <h2>Bot status</h2>
+        <p>Status: <strong><%= channel.enabled ? 'Enabled' : 'Disabled' %></strong></p>
+        <form method="post" action="/dashboard/toggle">
+          <button class="button" type="submit"><%= channel.enabled ? 'Disable bot' : 'Enable bot' %></button>
+        </form>
+      </article>
+
+      <article class="card">
+        <h2>Default translation</h2>
+        <form method="post" action="/dashboard/settings" class="stack">
+          <input name="preferred_translation" type="text" value="<%= channel.preferred_translation %>" placeholder="eng_kjv or WEB" />
+          <button class="button" type="submit">Save translation</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Chat usage</h2>
+      <ul>
+        <li><code>John 3:16</code></li>
+        <li><code>Psalms 23:1 WEB</code></li>
+        <li><code>Romans 8:28-30 GLV</code></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
