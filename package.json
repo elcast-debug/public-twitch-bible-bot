@@ -1,6 +1,6 @@
 {
   "name": "public-twitch-bible-bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Public multi-channel Twitch Bible bot with web UI and Railway deployment",
   "main": "server.js",
   "scripts": {
@@ -15,6 +15,6 @@
     "tmi.js": "^1.8.5"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "22"
   }
 }

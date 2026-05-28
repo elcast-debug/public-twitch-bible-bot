@@ -11,6 +11,7 @@ A multi-channel public Twitch Bible bot with a web UI. Streamers can connect the
 - Default translation setting per channel
 - Multi-channel Twitch chat bot using one central bot account
 - Verse lookup via HelloAO Free Use Bible API
+- SQLite stored on a Railway volume path for persistence
 
 ## Stack
 
@@ -29,6 +30,19 @@ Create a Twitch developer application and set:
 
 The bot account itself still needs a valid Twitch chat OAuth token in `TWITCH_OAUTH_TOKEN`.
 
+## Railway persistence setup
+
+This app stores SQLite in:
+
+- `process.env.RAILWAY_VOLUME_MOUNT_PATH`, if available, or
+- local `./data/data.sqlite` during development
+
+### On Railway
+
+1. Create a **Volume** for the service
+2. Mount it at **`/app/data`**
+3. The app will automatically use that path and persist `data.sqlite`
+
 ## Environment
 
 Copy `.env.example` to `.env` and fill in the values.
@@ -46,10 +60,9 @@ npm start
 2. Create a Railway project from the repo
 3. Add the environment variables from `.env.example`
 4. Update `APP_BASE_URL` and `TWITCH_REDIRECT_URI` to your Railway domain
-5. Redeploy
+5. Create and mount a volume at `/app/data`
+6. Redeploy
 
-## Notes
+## Node version note
 
-- This starter stores data in SQLite for simplicity. For serious production use, switch to Postgres.
-- The Twitch OAuth login is used to identify the streamer and save their channel.
-- The bot joins enabled channels from the database on startup.
+This project pins **Node 22** because native SQLite builds can fail on newer runtimes without matching prebuilt binaries.
