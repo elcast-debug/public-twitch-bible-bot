@@ -283,7 +283,12 @@ app.get('/auth/twitch/callback', async (req, res) => {
 });
 app.get('/dashboard', requireLogin, (req, res) => {
   const channel = db.prepare('SELECT * FROM channels WHERE twitch_user_id = ?').get(req.session.user.id);
-  res.render('dashboard', { user: req.session.user, channel, appBaseUrl: APP_BASE_URL });
+  res.render('dashboard', {
+    user: req.session.user,
+    channel,
+    appBaseUrl: APP_BASE_URL,
+    TRANSLATION_DISPLAY_LABELS
+  });
 });
 app.post('/dashboard/settings', requireLogin, (req, res) => {
   const preferred = normalizeTranslationId(req.body.preferred_translation || DEFAULT_TRANSLATION, DEFAULT_TRANSLATION);
