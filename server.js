@@ -120,7 +120,20 @@ async function fetchVerseFromGateway(reference, version = "NKJV") {
   });
   const $ = cheerio.load(data);
   
-  let text = $('[class*="passage-text"]').text().replace(/\s+/g, " ").trim();
+  // Select the passage text element container
+  const passageTextElement = $('[class*="passage-text"]');
+
+  if (passageTextElement.length) {
+    // Remove cross-reference letter wrappers (like (A)), footnotes, and verse numbers
+    passageTextElement.find('.wrapper, .num, .chapternum, .footnote, .footnotes, .crossreference').remove();
+    
+    // Now extract the cleaned text from the container
+    var text = passageTextElement.text().replace(/\s+/g, " ").trim();
+  } else {
+    var text = "";
+  }
+
+  // Fallback to body text if the specific container wasn't found
   if (!text) {
     text = $("body").text().replace(/\s+/g, " ").trim();
   }
@@ -133,7 +146,7 @@ async function fetchVerseFromGateway(reference, version = "NKJV") {
   return {
     reference,
     version,
-    url: `${url}?search=${encodeURIComponent(reference)}&version=${encodeURIComponent(version)}`,
+    url: `${url}?search=${encodeURIComponent(reference)}&version=${encodeURIComponent(version)}`,[cite: 1]
     text
   };
 }
