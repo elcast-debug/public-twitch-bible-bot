@@ -123,17 +123,16 @@ async function fetchVerseFromGateway(reference, version = "NKJV") {
   // Select the passage text element container
   const passageTextElement = $('[class*="passage-text"]');
 
+  let text = "";
   if (passageTextElement.length) {
     // Remove cross-reference letter wrappers (like (A)), footnotes, and verse numbers
     passageTextElement.find('.wrapper, .num, .chapternum, .footnote, .footnotes, .crossreference').remove();
     
     // Now extract the cleaned text from the container
-    var text = passageTextElement.text().replace(/\s+/g, " ").trim();
-  } else {
-    var text = "";
+    text = passageTextElement.text().replace(/\s+/g, " ").trim();
   }
 
-  // Fallback to body text if the specific container wasn't found
+  // Fallback to body text if the specific container wasn't found or was empty
   if (!text) {
     text = $("body").text().replace(/\s+/g, " ").trim();
   }
@@ -146,7 +145,7 @@ async function fetchVerseFromGateway(reference, version = "NKJV") {
   return {
     reference,
     version,
-    url: `${url}?search=${encodeURIComponent(reference)}&version=${encodeURIComponent(version)}`,[cite: 1]
+    url: `${url}?search=${encodeURIComponent(reference)}&version=${encodeURIComponent(version)}`,
     text
   };
 }
