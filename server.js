@@ -5,6 +5,7 @@ const Database = require('better-sqlite3');
 const tmi = require('tmi.js');
 const path = require('path');
 const crypto = require('crypto');
+const https = require('https');
 
 const PORT = process.env.PORT || 3000;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
@@ -80,7 +81,7 @@ const TRANSLATION_ALIASES = {
   WEB:'ENGWEBP', WEBP:'ENGWEBP', WEBC:'eng_webc', WEBPB:'eng_webpb', WEBU:'eng_webu', WEU:'eng_weu', WMB:'eng_wmb', WMU:'eng_wmu',
   WYC2017:'eng_wyc2017', WYC2018:'eng_wyc2018', YLT:'eng_ylt', NET:'eng_net', NNA:'eng_nna', NOY:'eng_noy', OJB:'eng_ojb',
   OKE:'eng_oke', OUR:'eng_our', PEV:'eng_pev', RV5:'eng_rv5', T4T:'eng_t4t', TCE:'eng_tce', TNT:'eng_tnt', ULB:'eng_ulb',
-  W88:'eng_w88', WBS:'eng_wbs', GHT:'GHT'
+  W88:'eng_w88', WBS:'eng_wbs', GHT:'GHT', NKJV:'NKJV'
 };
 const TRANSLATION_DISPLAY_LABELS = {
   eng_kjv:'KJV', eng_kja:'KJVA', eng_asv:'ASV', eng_abt:'ABT', AAB:'AAB', BSB:'BSB', eng_bbe:'BBE', eng_boy:'BOY', eng_bre:'BRE',
@@ -88,11 +89,101 @@ const TRANSLATION_DISPLAY_LABELS = {
   eng_lxx:'LXX', eng_msb:'MSB', eng_f35:'F35', eng_fbv:'FBV', eng_glw:'GLV', eng_gnv:'GNV', eng_web:'WEB', ENGWEBP:'WEB',
   eng_webc:'WEBC', eng_webpb:'WEBPB', eng_webu:'WEBU', eng_weu:'WEU', eng_wmb:'WMB', eng_wmu:'WMU', eng_wyc2017:'WYC2017',
   eng_wyc2018:'WYC2018', eng_ylt:'YLT', eng_net:'NET', eng_nna:'NNA', eng_noy:'NOY', eng_ojb:'OJB', eng_oke:'OKE', eng_our:'OUR',
-  eng_pev:'PEV', eng_rv5:'RV5', eng_t4t:'T4T', eng_tce:'TCE', eng_tnt:'TNT', eng_ulb:'ULB', eng_w88:'W88', eng_wbs:'WBS', GHT:'GHT'
+  eng_pev:'PEV', eng_rv5:'RV5', eng_t4t:'T4T', eng_tce:'TCE', eng_tnt:'TNT', eng_ulb:'ULB', eng_w88:'W88', eng_wbs:'WBS', GHT:'GHT', NKJV:'NKJV'
 };
 
 let englishTranslations = [];
 const VERSE_REGEX = /^([1-3]?\s?[A-Za-z]+(?:\s(?:of\s)?[A-Za-z]+)*)\s+(\d+)(?::(\d+)(?:-(\d+))?)?(?:\s+([A-Za-z0-9_-]+))?$/i;
+
+let nkjvHtmlCache = null;
+const NKJV_SOURCE_URL = 'https://elcast.org/NKJV_Bible.html';
+const NKJV_BOOK_TITLES = {
+  GEN:'Genesis', EXO:'Exodus', LEV:'Leviticus', NUM:'Numbers', DEU:'Deuteronomy', JOS:'Joshua', JDG:'Judges', RUT:'Ruth',
+  '1SA':'1 Samuel', '2SA':'2 Samuel', '1KI':'1 Kings', '2KI':'2 Kings', '1CH':'1 Chronicles', '2CH':'2 Chronicles',
+  EZR:'Ezra', NEH:'Nehemiah', EST:'Esther', JOB:'Job', PSA:'Psalms', PRO:'Proverbs', ECC:'Ecclesiastes', SNG:'Song of Solomon',
+  ISA:'Isaiah', JER:'Jeremiah', LAM:'Lamentations', EZK:'Ezekiel', DAN:'Daniel', HOS:'Hosea', JOL:'Joel', AMO:'Amos', OBA:'Obadiah',
+  JON:'Jonah', MIC:'Micah', NAM:'Nahum', HAB:'Habakkuk', ZEP:'Zephaniah', HAG:'Haggai', ZEC:'Zechariah', MAL:'Malachi',
+  MAT:'Matthew', MRK:'Mark', LUK:'Luke', JHN:'John', ACT:'Acts', ROM:'Romans', '1CO':'1 Corinthians', '2CO':'2 Corinthians',
+  GAL:'Galatians', EPH:'Ephesians', PHP:'Philippians', COL:'Colossians', '1TH':'1 Thessalonians', '2TH':'2 Thessalonians',
+  '1TI':'1 Timothy', '2TI':'2 Timothy', TIT:'Titus', PHM:'Philemon', HEB:'Hebrews', JAS:'James', '1PE':'1 Peter', '2PE':'2 Peter',
+  '1JN':'1 John', '2JN':'2 John', '3JN':'3 John', JUD:'Jude', REV:'Revelation'
+};
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return resolve(fetchText(res.headers.location));
+      }
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        return;
+      }
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+}
+async function getNkjvHtml() {
+  if (nkjvHtmlCache) return nkjvHtmlCache;
+  nkjvHtmlCache = await fetchText(NKJV_SOURCE_URL);
+  return nkjvHtmlCache;
+}
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function stripHtml(html) {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function extractChapterSliceFromHtml(html, bookName, chapter) {
+  const bookPattern = escapeRegExp(bookName);
+  const chapterPattern = new RegExp(`${bookPattern}\s+${chapter}(?:\b|\s*</[^>]+>)`, 'i');
+  const nextChapterPattern = new RegExp(`${bookPattern}\s+${Number(chapter) + 1}(?:\b|\s*</[^>]+>)`, 'i');
+  const startMatch = chapterPattern.exec(html);
+  if (!startMatch) return null;
+  const start = startMatch.index;
+  const rest = html.slice(start + startMatch[0].length);
+  const nextMatch = nextChapterPattern.exec(rest);
+  const end = nextMatch ? start + startMatch[0].length + nextMatch.index : start + startMatch[0].length + rest.length;
+  return html.slice(start, end);
+}
+function extractVersesFromChapterText(chapterText) {
+  const matches = [...chapterText.matchAll(/(?:^|\s)(\d{1,3})\s+/g)];
+  const verses = [];
+  for (let i = 0; i < matches.length; i++) {
+    const verseNo = Number(matches[i][1]);
+    const start = matches[i].index + matches[i][0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : chapterText.length;
+    const text = chapterText.slice(start, end).replace(/\s+/g, ' ').trim();
+    verses.push({ number: verseNo, text });
+  }
+  return verses.filter(v => v.text);
+}
+async function fetchNkjvVerse(bookId, chapter, verseStart, verseEnd) {
+  const html = await getNkjvHtml();
+  const bookName = NKJV_BOOK_TITLES[bookId];
+  if (!bookName) throw new Error(`Unsupported NKJV book: ${bookId}`);
+  const chapterSlice = extractChapterSliceFromHtml(html, bookName, chapter);
+  if (!chapterSlice) throw new Error('NKJV chapter not found');
+  const chapterText = stripHtml(chapterSlice);
+  const verses = extractVersesFromChapterText(chapterText);
+  const selected = verses.filter(v => v.number >= verseStart && v.number <= (verseEnd || verseStart));
+  if (!selected.length) throw new Error('NKJV verse not found');
+  return {
+    bookName,
+    text: selected.map(v => `${v.number}. ${v.text}`).join(' ')
+  };
+}
 
 function truncateMessage(text, maxLen = 490) {
   return text.length <= maxLen ? text : text.slice(0, maxLen - 1).trimEnd() + '…';
@@ -169,16 +260,28 @@ botClient.on('message', async (channel, tags, message, self) => {
   if (!bookId) return;
 
   const translationId = normalizeTranslationId(versionRaw, channelDefault);
-  if (versionRaw && englishTranslations.length && !isKnownTranslationId(translationId)) {
+  if (versionRaw && translationId !== 'NKJV' && englishTranslations.length && !isKnownTranslationId(translationId)) {
     await botClient.say(channel, truncateMessage(`@${tags.username} ❌ Unknown translation: ${versionRaw}`));
     return;
   }
 
   try {
-    const data = await fetchChapter(translationId, bookId, Number(chapterRaw));
-    const verses = (data?.chapter?.content || []).filter(item => item.type === 'verse');
     const verseStart = verseStartRaw ? Number(verseStartRaw) : null;
     const verseEnd = verseEndRaw ? Number(verseEndRaw) : null;
+
+    if (translationId === 'NKJV') {
+      if (!verseStart) {
+        await botClient.say(channel, `@${tags.username} ❌ Please include a verse number for NKJV.`);
+        return;
+      }
+      const nkjv = await fetchNkjvVerse(bookId, Number(chapterRaw), verseStart, verseEnd);
+      const reference = `${nkjv.bookName} ${chapterRaw}:${verseStart}${verseEnd ? '-' + verseEnd : ''}`;
+      await botClient.say(channel, truncateMessage(`📖 ${reference} (NKJV) — ${nkjv.text}`));
+      return;
+    }
+
+    const data = await fetchChapter(translationId, bookId, Number(chapterRaw));
+    const verses = (data?.chapter?.content || []).filter(item => item.type === 'verse');
     const selected = verseStart === null ? verses : verses.filter(v => v.number >= verseStart && v.number <= (verseEnd || verseStart));
     if (!selected.length) {
       await botClient.say(channel, `@${tags.username} ❌ Verse not found.`);
