@@ -10,7 +10,7 @@ const cheerio = require('cheerio');
 
 const PORT = process.env.PORT || 3000;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
-const DEFAULT_TRANSLATION = process.env.DEFAULT_TRANSLATION || 'NKJV';
+const DEFAULT_TRANSLATION = process.env.DEFAULT_TRANSLATION || 'eng_kjv';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-me';
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
@@ -76,42 +76,44 @@ const BOOK_ALIASES = {
 };
 
 const TRANSLATION_ALIASES = {
-  KJV:'eng_kjv', KJVA:'eng_kja', ASV:'eng_asv', ABT:'eng_abt', AAB:'AAB', BSB:'BSB', BBE:'eng_bbe', BOY:'eng_boy', BRE:'eng_bre',
+  NKJV:'NKJV', ESV:'ESV', KJV:'eng_kjv', KJVA:'eng_kja', ASV:'eng_asv', ABT:'eng_abt', AAB:'AAB', BSB:'BSB', BBE:'eng_bbe', BOY:'eng_boy', BRE:'eng_bre',
   CPB:'eng_cpb', DBY:'eng_dby', DARBY:'eng_dby', DRA:'eng_dra', EMTV:'eng_emtv', JPS:'eng_jps', LEE:'eng_lee', LSV:'eng_lsv',
   LXU:'eng_lxu', LXX:'eng_lxx', MSB:'eng_msb', F35:'eng_f35', FBV:'eng_fbv', GLV:'eng_glw', GLW:'eng_glw', GNV:'eng_gnv',
   WEB:'ENGWEBP', WEBP:'ENGWEBP', WEBC:'eng_webc', WEBPB:'eng_webpb', WEBU:'eng_webu', WEU:'eng_weu', WMB:'eng_wmb', WMU:'eng_wmu',
   WYC2017:'eng_wyc2017', WYC2018:'eng_wyc2018', YLT:'eng_ylt', NET:'eng_net', NNA:'eng_nna', NOY:'eng_noy', OJB:'eng_ojb',
   OKE:'eng_oke', OUR:'eng_our', PEV:'eng_pev', RV5:'eng_rv5', T4T:'eng_t4t', TCE:'eng_tce', TNT:'eng_tnt', ULB:'eng_ulb',
-  W88:'eng_w88', WBS:'eng_wbs', GHT:'GHT', NKJV:'NKJV'
+  W88:'eng_w88', WBS:'eng_wbs', GHT:'GHT'
 };
+
 const TRANSLATION_DISPLAY_LABELS = {
-  eng_kjv:'KJV', eng_kja:'KJVA', eng_asv:'ASV', eng_abt:'ABT', AAB:'AAB', BSB:'BSB', eng_bbe:'BBE', eng_boy:'BOY', eng_bre:'BRE',
+  NKJV:'NKJV', ESV:'ESV', eng_kjv:'KJV', eng_kja:'KJVA', eng_asv:'ASV', eng_abt:'ABT', AAB:'AAB', BSB:'BSB', eng_bbe:'BBE', eng_boy:'BOY', eng_bre:'BRE',
   eng_cpb:'CPB', eng_dby:'DARBY', eng_dra:'DRA', eng_emtv:'EMTV', eng_jps:'JPS', eng_lee:'LEE', eng_lsv:'LSV', eng_lxu:'LXU',
   eng_lxx:'LXX', eng_msb:'MSB', eng_f35:'F35', eng_fbv:'FBV', eng_glw:'GLV', eng_gnv:'GNV', eng_web:'WEB', ENGWEBP:'WEB',
   eng_webc:'WEBC', eng_webpb:'WEBPB', eng_webu:'WEBU', eng_weu:'WEU', eng_wmb:'WMB', eng_wmu:'WMU', eng_wyc2017:'WYC2017',
   eng_wyc2018:'WYC2018', eng_ylt:'YLT', eng_net:'NET', eng_nna:'NNA', eng_noy:'NOY', eng_ojb:'OJB', eng_oke:'OKE', eng_our:'OUR',
-  eng_pev:'PEV', eng_rv5:'RV5', eng_t4t:'T4T', eng_tce:'TCE', eng_tnt:'TNT', eng_ulb:'ULB', eng_w88:'W88', eng_wbs:'WBS', GHT:'GHT', NKJV:'NKJV'
+  eng_pev:'PEV', eng_rv5:'RV5', eng_t4t:'T4T', eng_tce:'TCE', eng_tnt:'TNT', eng_ulb:'ULB', eng_w88:'W88', eng_wbs:'WBS', GHT:'GHT'
 };
 
 let englishTranslations = [];
 const VERSE_REGEX = /^([1-3]?\s?[A-Za-z]+(?:\s(?:of\s)?[A-Za-z]+)*)\s+(\d+)(?::(\d+)(?:-(\d+))?)?(?:\s+([A-Za-z0-9_-]+))?$/i;
 
-const NKJV_BOOK_TITLES = {
+const GATEWAY_BOOK_TITLES = {
   GEN:'Genesis', EXO:'Exodus', LEV:'Leviticus', NUM:'Numbers', DEU:'Deuteronomy', JOS:'Joshua', JDG:'Judges', RUT:'Ruth',
   '1SA':'1 Samuel', '2SA':'2 Samuel', '1KI':'1 Kings', '2KI':'2 Kings', '1CH':'1 Chronicles', '2CH':'2 Chronicles',
   EZR:'Ezra', NEH:'Nehemiah', EST:'Esther', JOB:'Job', PSA:'Psalms', PRO:'Proverbs', ECC:'Ecclesiastes', SNG:'Song of Solomon',
   ISA:'Isaiah', JER:'Jeremiah', LAM:'Lamentations', EZK:'Ezekiel', DAN:'Daniel', HOS:'Hosea', JOL:'Joel', AMO:'Amos', OBA:'Obadiah',
-  JON:'Jonah', MIC:'Micah', NAM:'Nahum', HAB:'Habakkuk', ZEP:'Zephaniah', HAG:'Haggai', ZEC:'Zechariah', MAL:'Malachi',
+  JON:'Jonah', MICAH:'Micah', MIC:'Micah', NAM:'Nahum', HAB:'Habakkuk', ZEP:'Zephaniah', HAG:'Haggai', ZEC:'Zechariah', MAL:'Malachi',
   MAT:'Matthew', MRK:'Mark', LUK:'Luke', JHN:'John', ACT:'Acts', ROM:'Romans', '1CO':'1 Corinthians', '2CO':'2 Corinthians',
   GAL:'Galatians', EPH:'Ephesians', PHP:'Philippians', COL:'Colossians', '1TH':'1 Thessalonians', '2TH':'2 Thessalonians',
   '1TI':'1 Timothy', '2TI':'2 Timothy', TIT:'Titus', PHM:'Philemon', HEB:'Hebrews', JAS:'James', '1PE':'1 Peter', '2PE':'2 Peter',
   '1JN':'1 John', '2JN':'2 John', '3JN':'3 John', JUD:'Jude', REV:'Revelation'
 };
 
-async function fetchVerseFromGateway(reference, version = "NKJV") {
+// Custom Scraper: Dynamically changes "version" based on translationId ("NKJV" or "ESV")
+async function fetchVerseFromGateway(reference, version) {
   const url = "https://www.biblegateway.com/passage/";
   const { data } = await axios.get(url, {
-    params: { search: reference, version },
+    params: { search: reference, version: version },
     headers: {
       "User-Agent": "Mozilla/5.0",
       "Accept-Language": "en-US,en;q=0.9"
@@ -120,24 +122,19 @@ async function fetchVerseFromGateway(reference, version = "NKJV") {
   });
   const $ = cheerio.load(data);
   
-  // Select the passage text element container
   const passageTextElement = $('[class*="passage-text"]');
 
   let text = "";
   if (passageTextElement.length) {
-    // Remove cross-reference letter wrappers (like (A)), footnotes, and verse numbers
+    // Strips out cross references (A), section numbers, and footnotes
     passageTextElement.find('.wrapper, .num, .chapternum, .footnote, .footnotes, .crossreference').remove();
-    
-    // Now extract the cleaned text from the container
     text = passageTextElement.text().replace(/\s+/g, " ").trim();
   }
 
-  // Fallback to body text if the specific container wasn't found or was empty
   if (!text) {
     text = $("body").text().replace(/\s+/g, " ").trim();
   }
 
-  // Hard cutoff: Split the string at "Read full chapter" and take everything before it
   if (text.includes("Read full chapter")) {
     text = text.split("Read full chapter")[0].trim();
   }
@@ -225,7 +222,11 @@ botClient.on('message', async (channel, tags, message, self) => {
   if (!bookId) return;
 
   const translationId = normalizeTranslationId(versionRaw, channelDefault);
-  if (versionRaw && translationId !== 'NKJV' && englishTranslations.length && !isKnownTranslationId(translationId)) {
+  
+  // Whitelist both scraped versions so they bypass the external database format checking
+  const isScrapedVersion = translationId === 'NKJV' || translationId === 'ESV';
+
+  if (versionRaw && !isScrapedVersion && englishTranslations.length && !isKnownTranslationId(translationId)) {
     await botClient.say(channel, truncateMessage(`@${tags.username} ❌ Unknown translation: ${versionRaw}`));
     return;
   }
@@ -234,20 +235,26 @@ botClient.on('message', async (channel, tags, message, self) => {
     const verseStart = verseStartRaw ? Number(verseStartRaw) : null;
     const verseEnd = verseEndRaw ? Number(verseEndRaw) : null;
 
-    if (translationId === 'NKJV') {
-      const bookName = NKJV_BOOK_TITLES[bookId] || bookRaw;
-      const gatewayReference = `${bookName} ${chapterRaw}${verseStart ? ':' + verseStart + (verseEnd ? '-' + verseEnd : '') : ''}`;
+    // Checks if translation is NKJV or ESV to explicitly execute the correct target query parameters
+    if (isScrapedVersion) {
+      if (!verseStart) {
+        await botClient.say(channel, `@${tags.username} ❌ Please include a verse number for ${translationId}.`);
+        return;
+      }
+      const bookName = GATEWAY_BOOK_TITLES[bookId] || bookRaw;
+      const gatewayReference = `${bookName} ${chapterRaw}:${verseStart}${verseEnd ? '-' + verseEnd : ''}`;
       
-      const nkjvResult = await fetchVerseFromGateway(gatewayReference, "NKJV");
-      if (!nkjvResult.text) {
-        await botClient.say(channel, `@${tags.username} ❌ NKJV verse not found.`);
+      const gatewayResult = await fetchVerseFromGateway(gatewayReference, translationId);
+      if (!gatewayResult.text) {
+        await botClient.say(channel, `@${tags.username} ❌ ${translationId} verse not found.`);
         return;
       }
       
-      await botClient.say(channel, truncateMessage(`📖 ${gatewayReference} (NKJV) — ${nkjvResult.text}`));
+      await botClient.say(channel, truncateMessage(`📖 ${gatewayReference} (${translationId}) — ${gatewayResult.text}`));
       return;
     }
 
+    // Standard database path fallback
     const data = await fetchChapter(translationId, bookId, Number(chapterRaw));
     const verses = (data?.chapter?.content || []).filter(item => item.type === 'verse');
     const selected = verseStart === null ? verses : verses.filter(v => v.number >= verseStart && v.number <= (verseEnd || verseStart));
