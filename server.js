@@ -5,7 +5,8 @@ const Database = require('better-sqlite3');
 const tmi = require('tmi.js');
 const path = require('path');
 const crypto = require('crypto');
-const https = require('https');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 const PORT = process.env.PORT || 3000;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
@@ -95,8 +96,6 @@ const TRANSLATION_DISPLAY_LABELS = {
 let englishTranslations = [];
 const VERSE_REGEX = /^([1-3]?\s?[A-Za-z]+(?:\s(?:of\s)?[A-Za-z]+)*)\s+(\d+)(?::(\d+)(?:-(\d+))?)?(?:\s+([A-Za-z0-9_-]+))?$/i;
 
-let nkjvHtmlCache = null;
-const NKJV_SOURCE_URL = 'https://elcast.org/NKJV_Bible.html';
 const NKJV_BOOK_TITLES = {
   GEN:'Genesis', EXO:'Exodus', LEV:'Leviticus', NUM:'Numbers', DEU:'Deuteronomy', JOS:'Joshua', JDG:'Judges', RUT:'Ruth',
   '1SA':'1 Samuel', '2SA':'2 Samuel', '1KI':'1 Kings', '2KI':'2 Kings', '1CH':'1 Chronicles', '2CH':'2 Chronicles',
@@ -108,80 +107,27 @@ const NKJV_BOOK_TITLES = {
   '1TI':'1 Timothy', '2TI':'2 Timothy', TIT:'Titus', PHM:'Philemon', HEB:'Hebrews', JAS:'James', '1PE':'1 Peter', '2PE':'2 Peter',
   '1JN':'1 John', '2JN':'2 John', '3JN':'3 John', JUD:'Jude', REV:'Revelation'
 };
-function fetchText(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return resolve(fetchText(res.headers.location));
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(data));
-    }).on('error', reject);
+
+async function fetchVerseFromGateway(reference, version = "NKJV") {
+  const url = "https://www.biblegateway.com/passage/";
+  const { data } = await axios.get(url, {
+    params: { search: reference, version },
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept-Language": "en-US,en;q=0.9"
+    },
+    timeout: 20000
   });
-}
-async function getNkjvHtml() {
-  if (nkjvHtmlCache) return nkjvHtmlCache;
-  nkjvHtmlCache = await fetchText(NKJV_SOURCE_URL);
-  return nkjvHtmlCache;
-}
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-function stripHtml(html) {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-function extractChapterSliceFromHtml(html, bookName, chapter) {
-  const bookPattern = escapeRegExp(bookName);
-  const chapterPattern = new RegExp(`${bookPattern}\s+${chapter}(?:\b|\s*</[^>]+>)`, 'i');
-  const nextChapterPattern = new RegExp(`${bookPattern}\s+${Number(chapter) + 1}(?:\b|\s*</[^>]+>)`, 'i');
-  const startMatch = chapterPattern.exec(html);
-  if (!startMatch) return null;
-  const start = startMatch.index;
-  const rest = html.slice(start + startMatch[0].length);
-  const nextMatch = nextChapterPattern.exec(rest);
-  const end = nextMatch ? start + startMatch[0].length + nextMatch.index : start + startMatch[0].length + rest.length;
-  return html.slice(start, end);
-}
-function extractVersesFromChapterText(chapterText) {
-  const matches = [...chapterText.matchAll(/(?:^|\s)(\d{1,3})\s+/g)];
-  const verses = [];
-  for (let i = 0; i < matches.length; i++) {
-    const verseNo = Number(matches[i][1]);
-    const start = matches[i].index + matches[i][0].length;
-    const end = i + 1 < matches.length ? matches[i + 1].index : chapterText.length;
-    const text = chapterText.slice(start, end).replace(/\s+/g, ' ').trim();
-    verses.push({ number: verseNo, text });
+  const $ = cheerio.load(data);
+  let text = $('[class*="passage-text"]').text().replace(/\s+/g, " ").trim();
+  if (!text) {
+    text = $("body").text().replace(/\s+/g, " ").trim();
   }
-  return verses.filter(v => v.text);
-}
-async function fetchNkjvVerse(bookId, chapter, verseStart, verseEnd) {
-  const html = await getNkjvHtml();
-  const bookName = NKJV_BOOK_TITLES[bookId];
-  if (!bookName) throw new Error(`Unsupported NKJV book: ${bookId}`);
-  const chapterSlice = extractChapterSliceFromHtml(html, bookName, chapter);
-  if (!chapterSlice) throw new Error('NKJV chapter not found');
-  const chapterText = stripHtml(chapterSlice);
-  const verses = extractVersesFromChapterText(chapterText);
-  const selected = verses.filter(v => v.number >= verseStart && v.number <= (verseEnd || verseStart));
-  if (!selected.length) throw new Error('NKJV verse not found');
   return {
-    bookName,
-    text: selected.map(v => `${v.number}. ${v.text}`).join(' ')
+    reference,
+    version,
+    url: `${url}?search=${encodeURIComponent(reference)}&version=${encodeURIComponent(version)}`,
+    text
   };
 }
 
@@ -270,13 +216,16 @@ botClient.on('message', async (channel, tags, message, self) => {
     const verseEnd = verseEndRaw ? Number(verseEndRaw) : null;
 
     if (translationId === 'NKJV') {
-      if (!verseStart) {
-        await botClient.say(channel, `@${tags.username} ❌ Please include a verse number for NKJV.`);
+      const bookName = NKJV_BOOK_TITLES[bookId] || bookRaw;
+      const gatewayReference = `${bookName} ${chapterRaw}${verseStart ? ':' + verseStart + (verseEnd ? '-' + verseEnd : '') : ''}`;
+      
+      const nkjvResult = await fetchVerseFromGateway(gatewayReference, "NKJV");
+      if (!nkjvResult.text) {
+        await botClient.say(channel, `@${tags.username} ❌ NKJV verse not found.`);
         return;
       }
-      const nkjv = await fetchNkjvVerse(bookId, Number(chapterRaw), verseStart, verseEnd);
-      const reference = `${nkjv.bookName} ${chapterRaw}:${verseStart}${verseEnd ? '-' + verseEnd : ''}`;
-      await botClient.say(channel, truncateMessage(`📖 ${reference} (NKJV) — ${nkjv.text}`));
+      
+      await botClient.say(channel, truncateMessage(`📖 ${gatewayReference} (NKJV) — ${nkjvResult.text}`));
       return;
     }
 
