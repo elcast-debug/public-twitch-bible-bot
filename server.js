@@ -10,7 +10,7 @@ const cheerio = require('cheerio');
 
 const PORT = process.env.PORT || 3000;
 const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
-const DEFAULT_TRANSLATION = process.env.DEFAULT_TRANSLATION || 'eng_kjv';
+const DEFAULT_TRANSLATION = process.env.DEFAULT_TRANSLATION || 'NKJV';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-me';
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
