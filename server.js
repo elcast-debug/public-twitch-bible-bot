@@ -120,18 +120,16 @@ async function fetchVerseFromGateway(reference, version = "NKJV") {
   });
   const $ = cheerio.load(data);
   
-  // Locate the target passage text container
-  const passageContainer = $('[class*="passage-text"]');
-
-  // Strip out cross-references, footnotes, and "Read full chapter" meta links
-  passageContainer.find('.num, .chapternum, .footnote, .footnotes, .crossreference, .crossreferences, .full-chap-link, .passage-other-trans').remove();
-
-  let text = passageContainer.text().replace(/\s+/g, " ").trim();
-  
+  let text = $('[class*="passage-text"]').text().replace(/\s+/g, " ").trim();
   if (!text) {
     text = $("body").text().replace(/\s+/g, " ").trim();
   }
-  
+
+  // Hard cutoff: Split the string at "Read full chapter" and take everything before it
+  if (text.includes("Read full chapter")) {
+    text = text.split("Read full chapter")[0].trim();
+  }
+
   return {
     reference,
     version,
