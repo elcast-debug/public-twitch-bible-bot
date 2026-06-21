@@ -265,7 +265,7 @@ botClient.on('message', async (channel, tags, message, self) => {
     const verseText = selected.map(v => `${v.number}. ${flattenVerseContent(v.content || [])}`).join(' ').replace(/\s+/g, ' ').trim();
     const reference = `${data.book?.commonName || bookRaw} ${chapterRaw}${verseStart ? ':' + verseStart + (verseEnd ? '-' + verseEnd : '') : ''}`;
     const displayLabel = getTranslationDisplayLabel(translationId, versionRaw);
-    await botClient.say(channel, truncateMessage(`📖 ${reference} (${displayLabel}) — ${verseText}`));
+    await botClient.say(channel, truncateMessage(`${verseText}`));
   } catch (error) {
     console.error('Verse fetch error:', error.message);
     await botClient.say(channel, truncateMessage(`@${tags.username} ⚠️ Could not fetch that verse or translation.`));
