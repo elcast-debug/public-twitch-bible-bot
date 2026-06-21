@@ -250,7 +250,7 @@ botClient.on('message', async (channel, tags, message, self) => {
         return;
       }
       
-      await botClient.say(channel, truncateMessage(`📖 ${gatewayReference} (${translationId}) — ${gatewayResult.text}`));
+      await botClient.say(channel, truncateMessage(`${gatewayResult.text}`));
       return;
     }
 
